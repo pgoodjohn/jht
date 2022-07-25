@@ -74,8 +74,8 @@ impl Config {
         let config = Config {
             build_config: BuildConfig {
                 build_directory: String::from("./build"),
-                articles_directory: String::from("./build/articles"),
-                article_listings_page: String::from("articles"),
+                articles_directory: String::from("./build/blog"),
+                article_listings_page: String::from("blog"),
             },
             templates_dir: String::from("./templates"),
             article_template: String::from("./templates/article.html"),

@@ -13,7 +13,7 @@ pub struct BuildCommand {
 pub fn command(_command: &BuildCommand, config: &configuration::Config) {
     println!("Build command");
 
-    // Todo: initialize build directory if empty.
+    create_build_directory(std::path::Path::new(&config.build_config.build_directory));
 
     // Build index.html
     build_index(&config.templates_dir, &config.build_config.build_directory)
@@ -37,6 +37,17 @@ pub fn command(_command: &BuildCommand, config: &configuration::Config) {
     .expect("Could not build listing page");
 
     // Build other pages
+}
+
+fn create_build_directory(build_directory_path: &Path) {
+    match build_directory_path.exists() {
+        true => {}
+        false => {
+            println!("Creating empty build directory");
+            std::fs::create_dir_all(build_directory_path)
+                .expect("Failed to create build directory");
+        }
+    }
 }
 
 fn build_index(templates_directory: &String, build_directory: &String) -> Result<(), ()> {
