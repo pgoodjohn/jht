@@ -38,7 +38,8 @@ fn main() {
             init_command();
         }
         Some(Commands::Build(command)) => {
-            build::command(&command);
+            let config = configuration::Config::load();
+            build::command(&command, &config);
         }
         Some(Commands::Config(command)) => {
             config::command(&command);

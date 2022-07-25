@@ -5,6 +5,7 @@ extern crate dirs;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     pub templates_dir: String,
+    pub article_template: String,
     pub content_dir: String,
     pub build_config: BuildConfig,
 }
@@ -74,9 +75,10 @@ impl Config {
             build_config: BuildConfig {
                 build_directory: String::from("./build"),
                 articles_directory: String::from("./build/articles"),
-                article_listings_page: String::from("blog"),
+                article_listings_page: String::from("articles"),
             },
             templates_dir: String::from("./templates"),
+            article_template: String::from("./templates/article.html"),
             content_dir: String::from("./content"),
         };
 
@@ -109,8 +111,7 @@ impl ConfigLocation {
         if cfg!(debug_assertions) {
             config_path.push("/tmp/.just-html/");
         } else {
-            config_path.push(dirs::home_dir().unwrap());
-            config_path.push(".just-html/");
+            config_path.push(std::env::current_dir().expect("Could not load current path"));
         }
 
         // 🤢

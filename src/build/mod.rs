@@ -1,3 +1,4 @@
+use super::configuration;
 use clap::Parser;
 use std::fs::File;
 use std::io::prelude::*;
@@ -9,30 +10,48 @@ pub struct BuildCommand {
     debug: bool,
 }
 
-pub fn command(_command: &BuildCommand) {
+pub fn command(_command: &BuildCommand, config: &configuration::Config) {
     println!("Build command");
-    // todo!("Get a config object as parameter")
+
+    // Todo: initialize build directory if empty.
 
     // Build index.html
-    build_index().expect("Could not build index.html");
+    build_index(&config.templates_dir, &config.build_config.build_directory)
+        .expect("Could not build index.html");
 
     // Build content pages
-    let content_list = build_content_pages(std::path::Path::new("./templates/article.html"))
-        .expect("Could not build content");
+    let content_list = build_content_pages(
+        std::path::Path::new("./templates/article.html"),
+        std::path::Path::new(&config.build_config.articles_directory),
+        std::path::Path::new(&config.content_dir),
+    )
+    .expect("Could not build content");
 
     // Build content list page
-    build_listing_page(content_list).expect("Could not build listing page");
+    build_listing_page(
+        content_list,
+        std::path::Path::new(&config.templates_dir),
+        std::path::Path::new(&config.build_config.build_directory),
+        &config.build_config.article_listings_page,
+    )
+    .expect("Could not build listing page");
 
     // Build other pages
 }
 
-fn build_index() -> Result<(), ()> {
-    println!("Creating index.html from templates/index.html");
-    let index_template = std::fs::read_to_string(std::path::Path::new("./templates/index.html"))
-        .expect("index.html template missing");
+fn build_index(templates_directory: &String, build_directory: &String) -> Result<(), ()> {
+    println!(
+        "Creating index.html from {}/index.html",
+        templates_directory
+    );
 
-    let mut new_index_page = File::create(std::path::Path::new("./build/index.html"))
-        .expect("Failed creating build/index.html");
+    let x = format!("{}/index.html", templates_directory);
+    let index_template =
+        std::fs::read_to_string(std::path::Path::new(&x)).expect("index.html template missing");
+
+    let y = format!("{}/index.html", build_directory);
+    let mut new_index_page =
+        File::create(std::path::Path::new(&y)).expect("Failed creating index in build directory");
 
     new_index_page
         .write_all(index_template.as_bytes())
@@ -44,26 +63,34 @@ struct ContentList {
     items: Vec<String>,
 }
 
-fn build_content_pages(content_page_template: &Path) -> Result<ContentList, ()> {
+fn build_content_pages(
+    content_page_template: &Path,
+    articles_build_directory: &Path,
+    content_directory: &Path,
+) -> Result<ContentList, ()> {
     println!(
         "Building content pages with template {}",
         content_page_template.as_os_str().to_str().unwrap()
     );
 
     // todo!("Accept this as configuration parameter")
-    let content_build_folder_path = std::path::Path::new("./build/articles");
+    let content_build_folder_path = std::path::Path::new(articles_build_directory);
 
     match content_build_folder_path.exists() {
         true => {}
         false => {
-            println!("Creating ./build/articles");
+            println!(
+                "Creating {}",
+                content_build_folder_path
+                    .to_str()
+                    .expect("Could not unwrap string")
+            );
             std::fs::create_dir(content_build_folder_path)
                 .expect("Failed to create articles build folder in ./build/articles");
         }
     }
 
-    let all_content =
-        std::fs::read_dir(std::path::Path::new("./content")).expect("could not find content dir");
+    let all_content = std::fs::read_dir(content_directory).expect("could not find content dir");
 
     // todo!("Create a folder for the content it it doesn't already exist or it will crash");
 
@@ -80,7 +107,11 @@ fn build_content_pages(content_page_template: &Path) -> Result<ContentList, ()> 
         let article_page = article_template.replace("{article}", &file_contents);
 
         let new_file_name = String::from(format!(
-            "./build/articles/{}.html",
+            "{}/{}.html",
+            articles_build_directory
+                .as_os_str()
+                .to_str()
+                .expect("Could not convert articles build directory in new file path"),
             unwrapped
                 .path()
                 .file_stem()
@@ -106,7 +137,12 @@ fn build_content_pages(content_page_template: &Path) -> Result<ContentList, ()> 
     })
 }
 
-fn build_listing_page(content_list: ContentList) -> Result<(), ()> {
+fn build_listing_page(
+    content_list: ContentList,
+    templates_directory: &Path,
+    build_directory: &Path,
+    article_listing_page_name: &String,
+) -> Result<(), ()> {
     println!("Adding {:?} to listing page", content_list.items);
 
     let mut article_hrefs = String::new();
@@ -119,13 +155,20 @@ fn build_listing_page(content_list: ContentList) -> Result<(), ()> {
         ));
     }
 
-    let list_template = std::fs::read_to_string(std::path::Path::new("./templates/listing.html"))
-        .expect("listing templates missing");
+    let mut z = String::from(article_listing_page_name);
+    z.push_str(".html");
+    let mut x = templates_directory.clone().to_path_buf();
+
+    x.push(std::path::Path::new(&z));
+
+    let list_template = std::fs::read_to_string(&x).expect("listing templates missing");
 
     let list_page = list_template.replace("{article_list}", &article_hrefs);
 
-    let mut new_article_list = File::create(std::path::Path::new("./build/listing.html"))
-        .expect("unable to create new listing page");
+    let mut y = build_directory.clone().to_path_buf();
+
+    y.push(std::path::Path::new(&z));
+    let mut new_article_list = File::create(y).expect("unable to create new listing page");
 
     new_article_list
         .write_all(list_page.as_bytes())
