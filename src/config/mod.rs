@@ -26,7 +26,7 @@ pub enum ConfigCommands {
 }
 
 pub fn command(config_command: &ConfigCommand) {
-    println!("Config command");
+    log::info!("Running config command");
 
     match config_command.command.as_ref() {
         Some(ConfigCommands::Init { path }) => {
@@ -36,20 +36,20 @@ pub fn command(config_command: &ConfigCommand) {
             validate();
         }
         None => {
-            println!("Smth else")
+            log::info!("Unknown command")
         }
     }
 }
 
 fn initialize() {
-    println!("Initialising config");
+    log::info!("Initialising config");
 
     configuration::Config::init();
 }
 
 fn validate() {
-    println!("Validating config");
+    log::info!("Validating config");
     let conf = configuration::Config::load();
 
-    println!("{:?}", conf);
+    log::info!("{:?}", conf);
 }

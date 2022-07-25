@@ -11,7 +11,7 @@ pub struct BuildCommand {
 }
 
 pub fn command(_command: &BuildCommand, config: &configuration::Config) {
-    println!("Build command");
+    log::info!("Starting build process");
 
     create_build_directory(std::path::Path::new(&config.build_config.build_directory));
 
@@ -43,7 +43,7 @@ fn create_build_directory(build_directory_path: &Path) {
     match build_directory_path.exists() {
         true => {}
         false => {
-            println!("Creating empty build directory");
+            log::debug!("Creating empty build directory");
             std::fs::create_dir_all(build_directory_path)
                 .expect("Failed to create build directory");
         }
@@ -51,7 +51,7 @@ fn create_build_directory(build_directory_path: &Path) {
 }
 
 fn build_index(templates_directory: &String, build_directory: &String) -> Result<(), ()> {
-    println!(
+    log::info!(
         "Creating index.html from {}/index.html",
         templates_directory
     );
@@ -79,7 +79,7 @@ fn build_content_pages(
     articles_build_directory: &Path,
     content_directory: &Path,
 ) -> Result<ContentList, ()> {
-    println!(
+    log::info!(
         "Building content pages with template {}",
         content_page_template.as_os_str().to_str().unwrap()
     );
@@ -90,7 +90,7 @@ fn build_content_pages(
     match content_build_folder_path.exists() {
         true => {}
         false => {
-            println!(
+            log::debug!(
                 "Creating {}",
                 content_build_folder_path
                     .to_str()
@@ -141,7 +141,11 @@ fn build_content_pages(
         all_articles.push(new_file_name)
     }
 
-    println!("Build content pages {:?}", all_articles);
+    log::info!("Built content pages");
+
+    for article in &all_articles {
+        log::info!("- {}", article);
+    }
 
     Ok(ContentList {
         items: all_articles,
@@ -154,7 +158,7 @@ fn build_listing_page(
     build_directory: &Path,
     article_listing_page_name: &String,
 ) -> Result<(), ()> {
-    println!("Adding {:?} to listing page", content_list.items);
+    log::info!("Adding {:?} to listing page", content_list.items);
 
     let mut article_hrefs = String::new();
 

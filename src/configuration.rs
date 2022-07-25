@@ -1,6 +1,5 @@
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
-extern crate dirs;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
@@ -21,7 +20,7 @@ impl Config {
     pub fn load() -> Self {
         let config_location = ConfigLocation::new();
 
-        println!("Loading config from: {:?}", config_location);
+        log::debug!("Loading config from: {:?}", config_location);
 
         match config_location.config_directory.exists() {
             true => {}
@@ -40,11 +39,9 @@ impl Config {
         let contents = std::fs::read_to_string(config_location.config_file_path)
             .expect("Could not load configuration file");
 
-        // debug!("Config text loaded:\n\n{}", contents);
-
         let config: Config = toml::from_str(&contents).expect("Failed to parse configuration");
 
-        println!("Loaded config: {:?}", config);
+        log::debug!("Loaded config: {:?}", config);
 
         config
     }
@@ -82,7 +79,7 @@ impl Config {
             content_dir: String::from("./content"),
         };
 
-        println!("{:?}", config);
+        log::debug!("Created new config from default: {:?}", config);
 
         std::fs::write(
             &config_location.config_file_path,

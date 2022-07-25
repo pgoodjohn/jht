@@ -3,11 +3,12 @@ use clap::{Parser, Subcommand};
 mod build;
 mod config;
 mod configuration;
+mod logger;
 
 /// Next steps:
-/// - Init Script (creates index.html, listing.html, config.toml)
-/// - Config reading
-/// - Styles
+/// - Init Script
+///     - Create basic empty HTMLs (index.html, blog.html, article.html)
+/// - Styles support
 ///
 
 #[derive(Parser)]
@@ -33,6 +34,8 @@ enum Commands {
 fn main() {
     let cli = Cli::parse();
 
+    logger::init(cli.debug);
+
     match cli.command {
         Some(Commands::Init) => {
             init_command();
@@ -53,9 +56,9 @@ fn main() {
 }
 
 fn init_command() {
-    println!("Init command");
+    log::info!("Init command");
 }
 
 fn failure_message() {
-    println!("No command given");
+    log::info!("No command given");
 }
