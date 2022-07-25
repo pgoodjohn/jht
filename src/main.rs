@@ -80,16 +80,16 @@ fn failure_message() {
 }
 
 fn build_index() -> Result<(), ()> {
-    println!("Creating index.html from templates.index.html");
+    println!("Creating index.html from templates/index.html");
     let index_template = std::fs::read_to_string(std::path::Path::new("./templates/index.html"))
-        .expect("home templates missing");
+        .expect("index.html template missing");
 
     let mut new_index_page = File::create(std::path::Path::new("./build/index.html"))
-        .expect("unable to create new listing page");
+        .expect("Failed creating build/index.html");
 
     new_index_page
         .write_all(index_template.as_bytes())
-        .expect("could not create new index");
+        .expect("Failed writing to build/index.html");
     Ok(())
 }
 
@@ -102,6 +102,18 @@ fn build_content_pages(content_page_template: &Path) -> Result<ContentList, ()> 
         "Building content pages with template {}",
         content_page_template.as_os_str().to_str().unwrap()
     );
+
+    // todo!("Accept this as configuration parameter")
+    let content_build_folder_path = std::path::Path::new("./build/articles");
+
+    match content_build_folder_path.exists() {
+        true => {}
+        false => {
+            println!("Creating ./build/articles");
+            std::fs::create_dir(content_build_folder_path)
+                .expect("Failed to create articles build folder in ./build/articles");
+        }
+    }
 
     let all_content =
         std::fs::read_dir(std::path::Path::new("./content")).expect("could not find content dir");
