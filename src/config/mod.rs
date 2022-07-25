@@ -16,12 +16,12 @@ pub enum ConfigCommands {
     /// Initialize the configuration
     Init {
         #[clap(short, long)]
-        path: Option<String>,
+        _path: Option<String>,
     },
     /// Validate the configuration
     Validate {
         #[clap(short, long)]
-        path: Option<String>,
+        _path: Option<String>,
     },
 }
 
@@ -29,10 +29,10 @@ pub fn command(config_command: &ConfigCommand) {
     log::info!("Running config command");
 
     match config_command.command.as_ref() {
-        Some(ConfigCommands::Init { path }) => {
+        Some(ConfigCommands::Init { _path }) => {
             initialize();
         }
-        Some(ConfigCommands::Validate { path }) => {
+        Some(ConfigCommands::Validate { _path }) => {
             validate();
         }
         None => {
