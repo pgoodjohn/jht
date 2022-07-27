@@ -28,8 +28,7 @@ pub fn command(_command: &BuildCommand, config: &configuration::Config) {
         std::path::Path::new("./templates/article.html"),
         std::path::Path::new(&config.build_config.articles_directory),
         std::path::Path::new(&config.content_dir),
-    )
-    .expect("Could not build content");
+    );
 
     // Build content list page
     build_listing_page(
@@ -84,38 +83,45 @@ struct ContentList {
 
 fn build_content_pages(
     content_page_template: &Path,
-    articles_build_directory: &Path,
+    content_build_directory: &Path,
     content_directory: &Path,
-) -> Result<ContentList, ()> {
+) -> ContentList {
     log::info!(
         "Building content pages with template {}",
         content_page_template.as_os_str().to_str().unwrap()
     );
 
-    let content_build_folder_path = std::path::Path::new(articles_build_directory);
+    // TODO: This should not be specified in the config but should be a combination of two config value
+    // build directory + (new) content page naming (or something like that)
+    // content page naming would refer to:
+    // - listing template name
+    // - path of content pages
+    // - maybe something else
+    create_content_build_folder_if_it_does_not_exist(content_build_directory);
 
-    match content_build_folder_path.exists() {
-        true => {}
-        false => {
-            log::debug!(
-                "Creating {}",
-                content_build_folder_path
-                    .to_str()
-                    .expect("Could not unwrap string")
-            );
-            std::fs::create_dir(content_build_folder_path)
-                .expect("Failed to create articles build folder in ./build/articles");
-        }
-    }
+    build_content_files(
+        content_directory,
+        content_build_directory,
+        content_page_template,
+    )
+}
 
-    let all_content = std::fs::read_dir(content_directory).expect("could not find content dir");
+fn build_content_files(
+    content_directory: &Path,
+    content_build_directory: &Path,
+    content_page_template: &Path,
+) -> ContentList {
+    let content_directory_contents = std::fs::read_dir(content_directory)
+        .expect("Could not read contents of contents directory");
 
-    let mut all_articles = Vec::new();
+    let mut content_pages = Vec::new();
 
-    // TODO: Some validation here would be nice, build only .md files
-    // TODO: Clean this up
+    // TODO: validate that the content template has {article} in it
+    let content_template =
+        std::fs::read_to_string(content_page_template).expect("article template missing");
+
     // TODO: Add frontmatter support
-    for entry in all_content.into_iter() {
+    for entry in content_directory_contents.into_iter() {
         let content_file = entry.unwrap();
 
         log::debug!("Building file {:?}", &content_file.path());
@@ -124,39 +130,52 @@ fn build_content_pages(
             log::debug!("Markdown file detected, converting to html");
             let built_content_file = create_content_file_from_markdown_and_html_template(
                 &content_file.path(),
-                content_page_template,
-                articles_build_directory,
+                content_template.clone(),
+                content_build_directory,
             );
 
-            all_articles.push(built_content_file.file_name);
+            content_pages.push(built_content_file.file_name);
         }
     }
 
     log::info!("Built content pages");
 
-    for article in &all_articles {
-        log::info!("{}", article);
+    for content_page in &content_pages {
+        log::info!("{}", content_page);
     }
 
-    Ok(ContentList {
-        items: all_articles,
-    })
+    ContentList {
+        items: content_pages,
+    }
+}
+
+fn create_content_build_folder_if_it_does_not_exist(content_folder_path: &Path) {
+    match content_folder_path.exists() {
+        true => {}
+        false => {
+            log::debug!(
+                "Creating {}",
+                content_folder_path
+                    .to_str()
+                    .expect("Could not unwrap content folder path")
+            );
+            std::fs::create_dir(content_folder_path)
+                .expect("Failed to create content build folder ");
+        }
+    }
 }
 
 fn create_content_file_from_markdown_and_html_template(
     markdown_file: &Path,
-    content_page_template: &Path,
-    articles_build_directory: &Path,
+    content_page_template: String,
+    content_build_directory: &Path,
 ) -> BuiltContentFile {
     let content_file_content = std::fs::read_to_string(markdown_file).expect("unable to read file");
 
-    let article_template =
-        std::fs::read_to_string(content_page_template).expect("article template missing");
-
-    let built_content_file = BuiltContentFile::new(articles_build_directory, &markdown_file);
+    let built_content_file = BuiltContentFile::new(content_build_directory, &markdown_file);
 
     let prepared_template =
-        article_template.replace("{article}", &convert_markdown_to_html(content_file_content));
+        content_page_template.replace("{article}", &convert_markdown_to_html(content_file_content));
     write_content_to_file(&built_content_file, &prepared_template);
 
     built_content_file
