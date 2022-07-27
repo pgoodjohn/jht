@@ -41,6 +41,10 @@ pub fn command(_command: &BuildCommand, config: &configuration::Config) {
     .expect("Could not build listing page");
 
     // Build other pages
+    build_stylesheets(
+        std::path::Path::new(&config.templates_directory),
+        std::path::Path::new(&config.build_config.build_directory),
+    );
 }
 
 fn create_build_directory(build_directory_path: &Path) {
@@ -88,7 +92,6 @@ fn build_content_pages(
         content_page_template.as_os_str().to_str().unwrap()
     );
 
-    // todo!("Accept this as configuration parameter")
     let content_build_folder_path = std::path::Path::new(articles_build_directory);
 
     match content_build_folder_path.exists() {
@@ -204,4 +207,41 @@ fn build_listing_page(
         .expect("could not create new listing file");
 
     Ok(())
+}
+
+fn build_stylesheets(templates_directory: &Path, build_directory: &Path) {
+    log::info!("Building stylesheets");
+
+    let all_templates = std::fs::read_dir(templates_directory)
+        .expect("Failed reading templates in templates directory");
+
+    let stylesheets = all_templates.filter(|x| is_stylesheet(x));
+
+    for stylesheet in stylesheets {
+        match stylesheet {
+            Ok(template_file) => {
+                log::debug!("Building {:?}", template_file.path());
+                // Maybe do some minimization here
+                let mut built_file = build_directory.to_path_buf();
+                built_file.push(template_file.file_name());
+
+                std::fs::copy(template_file.path(), built_file)
+                    .expect("Could not copy stylesheet to build directory");
+            }
+            Err(_e) => {}
+        }
+    }
+}
+
+fn is_stylesheet(entry: &Result<std::fs::DirEntry, std::io::Error>) -> bool {
+    match entry {
+        Ok(entry) => match entry.path().extension() {
+            None => false,
+            Some(extension) => match extension.to_str() {
+                Some("css") => true,
+                _ => false,
+            },
+        },
+        Err(_e) => false,
+    }
 }
