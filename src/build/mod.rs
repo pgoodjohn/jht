@@ -118,27 +118,24 @@ fn build_content_pages(
     for entry in all_content.into_iter() {
         let content_file = entry.unwrap();
 
-        let file_contents =
-            std::fs::read_to_string(content_file.path()).expect("unable to read file");
+        log::debug!("Building file {:?}", &content_file.path());
 
-        let article_template =
-            std::fs::read_to_string(content_page_template).expect("article template missing");
+        if is_markdown(&content_file.path()) {
+            log::debug!("Markdown file detected, converting to html");
+            let built_content_file = create_content_file_from_markdown_and_html_template(
+                &content_file.path(),
+                content_page_template,
+                articles_build_directory,
+            );
 
-        let new_file_name =
-            BuiltArticleFilePath::new(articles_build_directory, &content_file.path());
-
-        write_content_to_file(
-            &new_file_name,
-            &prepare_content(article_template, file_contents),
-        );
-
-        all_articles.push(new_file_name.file_name);
+            all_articles.push(built_content_file.file_name);
+        }
     }
 
     log::info!("Built content pages");
 
     for article in &all_articles {
-        log::info!("- {}", article);
+        log::info!("{}", article);
     }
 
     Ok(ContentList {
@@ -146,7 +143,26 @@ fn build_content_pages(
     })
 }
 
-fn prepare_content(template: String, markdown_content: String) -> String {
+fn create_content_file_from_markdown_and_html_template(
+    markdown_file: &Path,
+    content_page_template: &Path,
+    articles_build_directory: &Path,
+) -> BuiltContentFile {
+    let content_file_content = std::fs::read_to_string(markdown_file).expect("unable to read file");
+
+    let article_template =
+        std::fs::read_to_string(content_page_template).expect("article template missing");
+
+    let built_content_file = BuiltContentFile::new(articles_build_directory, &markdown_file);
+
+    let prepared_template =
+        article_template.replace("{article}", &convert_markdown_to_html(content_file_content));
+    write_content_to_file(&built_content_file, &prepared_template);
+
+    built_content_file
+}
+
+fn convert_markdown_to_html(markdown_content: String) -> String {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
     let parser = MarkdownParser::new_ext(&markdown_content, options);
@@ -154,10 +170,10 @@ fn prepare_content(template: String, markdown_content: String) -> String {
     let mut html_output = String::new();
     html::push_html(&mut html_output, parser);
 
-    template.replace("{article}", &html_output)
+    html_output
 }
 
-fn write_content_to_file(file_path: &BuiltArticleFilePath, contents: &String) {
+fn write_content_to_file(file_path: &BuiltContentFile, contents: &String) {
     let mut new_file =
         File::create(&file_path.path).expect("failed to create a file to store the article");
 
@@ -166,12 +182,12 @@ fn write_content_to_file(file_path: &BuiltArticleFilePath, contents: &String) {
         .expect("unable to write to article page");
 }
 
-struct BuiltArticleFilePath {
+struct BuiltContentFile {
     path: PathBuf,
     file_name: String,
 }
 
-impl BuiltArticleFilePath {
+impl BuiltContentFile {
     pub fn new(build_directory: &Path, content_file_path: &Path) -> Self {
         let mut path = std::path::PathBuf::new();
 
@@ -259,6 +275,16 @@ fn build_stylesheets(templates_directory: &Path, build_directory: &Path) {
             }
             Err(_e) => {}
         }
+    }
+}
+
+fn is_markdown(path: &Path) -> bool {
+    match path.extension() {
+        None => false,
+        Some(extension) => match extension.to_str() {
+            Some("md") => true,
+            _ => false,
+        },
     }
 }
 
