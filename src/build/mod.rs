@@ -1,5 +1,6 @@
 use super::configuration;
 use clap::Parser;
+use pulldown_cmark::{html, Options, Parser as MarkdownParser};
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::Path;
@@ -16,8 +17,11 @@ pub fn command(_command: &BuildCommand, config: &configuration::Config) {
     create_build_directory(std::path::Path::new(&config.build_config.build_directory));
 
     // Build index.html
-    build_index(&config.templates_directory, &config.build_config.build_directory)
-        .expect("Could not build index.html");
+    build_index(
+        &config.templates_directory,
+        &config.build_config.build_directory,
+    )
+    .expect("Could not build index.html");
 
     // Build content pages
     let content_list = build_content_pages(
@@ -103,8 +107,6 @@ fn build_content_pages(
 
     let all_content = std::fs::read_dir(content_directory).expect("could not find content dir");
 
-    // todo!("Create a folder for the content it it doesn't already exist or it will crash");
-
     let mut all_articles = Vec::new();
 
     for entry in all_content.into_iter() {
@@ -115,7 +117,19 @@ fn build_content_pages(
         let article_template =
             std::fs::read_to_string(content_page_template).expect("article template missing");
 
-        let article_page = article_template.replace("{article}", &file_contents);
+        // TODO Convert markdown of file_contents to rich HTML
+
+        // Set up options and parser. Strikethroughs are not part of the CommonMark standard
+        // and we therefore must enable it explicitly.
+        let mut options = Options::empty();
+        options.insert(Options::ENABLE_STRIKETHROUGH);
+        let parser = MarkdownParser::new_ext(&file_contents, options);
+
+        // Write to String buffer.
+        let mut html_output = String::new();
+        html::push_html(&mut html_output, parser);
+
+        let article_page = article_template.replace("{article}", &html_output);
 
         let new_file_name = String::from(format!(
             "{}/{}.html",
