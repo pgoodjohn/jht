@@ -124,24 +124,13 @@ fn build_content_pages(
         let article_template =
             std::fs::read_to_string(content_page_template).expect("article template missing");
 
-        let mut options = Options::empty();
-        options.insert(Options::ENABLE_STRIKETHROUGH);
-        let parser = MarkdownParser::new_ext(&file_contents, options);
-
-        let mut html_output = String::new();
-        html::push_html(&mut html_output, parser);
-
-        let article_page = article_template.replace("{article}", &html_output);
-
         let new_file_name =
             BuiltArticleFilePath::new(articles_build_directory, &content_file.path());
 
-        let mut new_file =
-            File::create(new_file_name.path).expect("failed to create a file to store the article");
-
-        new_file
-            .write_all(article_page.as_bytes())
-            .expect("unable to write to article page");
+        write_content_to_file(
+            &new_file_name,
+            &prepare_content(article_template, file_contents),
+        );
 
         all_articles.push(new_file_name.file_name);
     }
@@ -155,6 +144,26 @@ fn build_content_pages(
     Ok(ContentList {
         items: all_articles,
     })
+}
+
+fn prepare_content(template: String, markdown_content: String) -> String {
+    let mut options = Options::empty();
+    options.insert(Options::ENABLE_STRIKETHROUGH);
+    let parser = MarkdownParser::new_ext(&markdown_content, options);
+
+    let mut html_output = String::new();
+    html::push_html(&mut html_output, parser);
+
+    template.replace("{article}", &html_output)
+}
+
+fn write_content_to_file(file_path: &BuiltArticleFilePath, contents: &String) {
+    let mut new_file =
+        File::create(&file_path.path).expect("failed to create a file to store the article");
+
+    new_file
+        .write_all(contents.as_bytes())
+        .expect("unable to write to article page");
 }
 
 struct BuiltArticleFilePath {
