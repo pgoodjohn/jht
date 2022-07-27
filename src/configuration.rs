@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
-    pub templates_dir: String,
+    pub templates_directory: String,
     pub article_template: String,
     pub content_dir: String,
     pub build_config: BuildConfig,
@@ -17,8 +17,8 @@ pub struct BuildConfig {
 }
 
 impl Config {
-    pub fn load() -> Self {
-        let config_location = ConfigLocation::new();
+    pub fn load(configuration_file_path: PathBuf) -> Self {
+        let config_location = ConfigLocation::new(configuration_file_path);
 
         log::debug!("Loading config from: {:?}", config_location);
 
@@ -46,8 +46,8 @@ impl Config {
         config
     }
 
-    pub fn init() -> Self {
-        let config_location = ConfigLocation::new();
+    pub fn init(configuration_file_path: PathBuf) -> Self {
+        let config_location = ConfigLocation::new(configuration_file_path);
 
         match config_location.config_directory.exists() {
             true => {}
@@ -74,7 +74,7 @@ impl Config {
                 articles_directory: String::from("./build/blog"),
                 article_listings_page: String::from("blog"),
             },
-            templates_dir: String::from("./templates"),
+            templates_directory: String::from("./templates"),
             article_template: String::from("./templates/article.html"),
             content_dir: String::from("./content"),
         };
@@ -91,8 +91,6 @@ impl Config {
     }
 }
 
-static CONFIG_FILENAME: &str = "conf.toml";
-
 #[derive(Debug)]
 struct ConfigLocation {
     /// Full path of the configuration directory
@@ -102,24 +100,15 @@ struct ConfigLocation {
 }
 
 impl ConfigLocation {
-    pub fn new() -> Self {
-        let mut config_path = PathBuf::new();
+    pub fn new(input_config_path: PathBuf) -> Self {
+        log::debug!("Initializing ConfigLocation for {:?}", input_config_path);
 
-        if cfg!(debug_assertions) {
-            config_path.push("/tmp/.just-html/");
-        } else {
-            config_path.push(std::env::current_dir().expect("Could not load current path"));
-        }
-
-        // 🤢
-
-        let config_dir = config_path.clone();
-
-        config_path.push(String::from(CONFIG_FILENAME));
+        let mut config_dir = input_config_path.clone();
+        config_dir.pop();
 
         let c = ConfigLocation {
             config_directory: config_dir,
-            config_file_path: config_path,
+            config_file_path: input_config_path,
         };
 
         c

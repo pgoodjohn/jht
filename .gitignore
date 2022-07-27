@@ -3,3 +3,5 @@
 /build
 /templates
 /content
+*.swp
+.test.toml

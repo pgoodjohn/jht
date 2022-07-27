@@ -16,7 +16,7 @@ pub fn command(_command: &BuildCommand, config: &configuration::Config) {
     create_build_directory(std::path::Path::new(&config.build_config.build_directory));
 
     // Build index.html
-    build_index(&config.templates_dir, &config.build_config.build_directory)
+    build_index(&config.templates_directory, &config.build_config.build_directory)
         .expect("Could not build index.html");
 
     // Build content pages
@@ -30,7 +30,7 @@ pub fn command(_command: &BuildCommand, config: &configuration::Config) {
     // Build content list page
     build_listing_page(
         content_list,
-        std::path::Path::new(&config.templates_dir),
+        std::path::Path::new(&config.templates_directory),
         std::path::Path::new(&config.build_config.build_directory),
         &config.build_config.article_listings_page,
     )
