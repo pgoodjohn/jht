@@ -4,7 +4,7 @@ use std::path::PathBuf;
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Config {
     pub templates_directory: String,
-    pub article_template: String,
+    pub content_template: String,
     pub content_dir: String,
     pub build_config: BuildConfig,
 }
@@ -12,8 +12,8 @@ pub struct Config {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BuildConfig {
     pub build_directory: String,
-    pub articles_directory: String,
-    pub article_listings_page: String,
+    pub content_directory: String,
+    pub content_listing_page: String,
 }
 
 impl Config {
@@ -68,14 +68,15 @@ impl Config {
             }
         }
 
+        // Default configuration
         let config = Config {
             build_config: BuildConfig {
                 build_directory: String::from("./build"),
-                articles_directory: String::from("./build/blog"),
-                article_listings_page: String::from("blog"),
+                content_directory: String::from("./build/blog"),
+                content_listing_page: String::from("blog"),
             },
             templates_directory: String::from("./templates"),
-            article_template: String::from("./templates/article.html"),
+            content_template: String::from("./templates/content.html"),
             content_dir: String::from("./content"),
         };
 

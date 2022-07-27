@@ -2,7 +2,7 @@ use clap::{Parser, Subcommand};
 /// ---
 /// Next steps:
 /// - Init Script
-///     - Create basic empty HTMLs (index.html, blog.html, article.html)
+///     - Create basic empty HTMLs (index.html, blog.html, content.html)
 /// - Styles support
 /// ----
 mod build;

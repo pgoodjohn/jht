@@ -1,9 +1,10 @@
 use super::configuration;
 use clap::Parser;
-use pulldown_cmark::{html, Options, Parser as MarkdownParser};
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::{Path, PathBuf};
+use std::path::Path;
+
+mod content;
 
 #[derive(Parser)]
 pub struct BuildCommand {
@@ -24,9 +25,9 @@ pub fn command(_command: &BuildCommand, config: &configuration::Config) {
     .expect("Could not build index.html");
 
     // Build content pages
-    let content_list = build_content_pages(
-        std::path::Path::new("./templates/article.html"),
-        std::path::Path::new(&config.build_config.articles_directory),
+    let content_list = content::build_content_pages(
+        std::path::Path::new(&config.content_template),
+        std::path::Path::new(&config.build_config.content_directory),
         std::path::Path::new(&config.content_dir),
     );
 
@@ -35,7 +36,7 @@ pub fn command(_command: &BuildCommand, config: &configuration::Config) {
         content_list,
         std::path::Path::new(&config.templates_directory),
         std::path::Path::new(&config.build_config.build_directory),
-        &config.build_config.article_listings_page,
+        &&config.build_config.content_listing_page,
     )
     .expect("Could not build listing page");
 
@@ -77,181 +78,27 @@ fn build_index(templates_directory: &String, build_directory: &String) -> Result
     Ok(())
 }
 
-struct ContentList {
-    items: Vec<String>,
-}
-
-fn build_content_pages(
-    content_page_template: &Path,
-    content_build_directory: &Path,
-    content_directory: &Path,
-) -> ContentList {
-    log::info!(
-        "Building content pages with template {}",
-        content_page_template.as_os_str().to_str().unwrap()
-    );
-
-    // TODO: This should not be specified in the config but should be a combination of two config value
-    // build directory + (new) content page naming (or something like that)
-    // content page naming would refer to:
-    // - listing template name
-    // - path of content pages
-    // - maybe something else
-    create_content_build_folder_if_it_does_not_exist(content_build_directory);
-
-    build_content_files(
-        content_directory,
-        content_build_directory,
-        content_page_template,
-    )
-}
-
-fn build_content_files(
-    content_directory: &Path,
-    content_build_directory: &Path,
-    content_page_template: &Path,
-) -> ContentList {
-    let content_directory_contents = std::fs::read_dir(content_directory)
-        .expect("Could not read contents of contents directory");
-
-    let mut content_pages = Vec::new();
-
-    // TODO: validate that the content template has {article} in it
-    let content_template =
-        std::fs::read_to_string(content_page_template).expect("article template missing");
-
-    // TODO: Add frontmatter support
-    for entry in content_directory_contents.into_iter() {
-        let content_file = entry.unwrap();
-
-        log::debug!("Building file {:?}", &content_file.path());
-
-        if is_markdown(&content_file.path()) {
-            log::debug!("Markdown file detected, converting to html");
-            let built_content_file = create_content_file_from_markdown_and_html_template(
-                &content_file.path(),
-                content_template.clone(),
-                content_build_directory,
-            );
-
-            content_pages.push(built_content_file.file_name);
-        }
-    }
-
-    log::info!("Built content pages");
-
-    for content_page in &content_pages {
-        log::info!("{}", content_page);
-    }
-
-    ContentList {
-        items: content_pages,
-    }
-}
-
-fn create_content_build_folder_if_it_does_not_exist(content_folder_path: &Path) {
-    match content_folder_path.exists() {
-        true => {}
-        false => {
-            log::debug!(
-                "Creating {}",
-                content_folder_path
-                    .to_str()
-                    .expect("Could not unwrap content folder path")
-            );
-            std::fs::create_dir(content_folder_path)
-                .expect("Failed to create content build folder ");
-        }
-    }
-}
-
-fn create_content_file_from_markdown_and_html_template(
-    markdown_file: &Path,
-    content_page_template: String,
-    content_build_directory: &Path,
-) -> BuiltContentFile {
-    let content_file_content = std::fs::read_to_string(markdown_file).expect("unable to read file");
-
-    let built_content_file = BuiltContentFile::new(content_build_directory, &markdown_file);
-
-    let prepared_template =
-        content_page_template.replace("{article}", &convert_markdown_to_html(content_file_content));
-    write_content_to_file(&built_content_file, &prepared_template);
-
-    built_content_file
-}
-
-fn convert_markdown_to_html(markdown_content: String) -> String {
-    let mut options = Options::empty();
-    options.insert(Options::ENABLE_STRIKETHROUGH);
-    let parser = MarkdownParser::new_ext(&markdown_content, options);
-
-    let mut html_output = String::new();
-    html::push_html(&mut html_output, parser);
-
-    html_output
-}
-
-fn write_content_to_file(file_path: &BuiltContentFile, contents: &String) {
-    let mut new_file =
-        File::create(&file_path.path).expect("failed to create a file to store the article");
-
-    new_file
-        .write_all(contents.as_bytes())
-        .expect("unable to write to article page");
-}
-
-struct BuiltContentFile {
-    path: PathBuf,
-    file_name: String,
-}
-
-impl BuiltContentFile {
-    pub fn new(build_directory: &Path, content_file_path: &Path) -> Self {
-        let mut path = std::path::PathBuf::new();
-
-        let formatted_path = String::from(format!(
-            "{}/{}.html",
-            build_directory
-                .as_os_str()
-                .to_str()
-                .expect("Could not convert articles build directory in new file path"),
-            content_file_path
-                .file_stem()
-                .expect("Unable to get file stem from article file path")
-                .to_str()
-                .expect("Unable to convert file stem from article file path to string"),
-        ));
-
-        path.push(std::path::Path::new(&formatted_path));
-
-        Self {
-            path: path,
-            file_name: formatted_path,
-        }
-    }
-}
-
 fn build_listing_page(
-    content_list: ContentList,
+    content_list: content::ContentList,
     templates_directory: &Path,
     build_directory: &Path,
-    article_listing_page_name: &String,
+    content_listing_page_name: &String,
 ) -> Result<(), ()> {
     log::info!("Adding {:?} to listing page", content_list.items);
 
-    let mut article_hrefs = String::new();
+    let mut content_hrefs = String::new();
 
-    for article in content_list.items {
-        article_hrefs.push_str(&format!(
+    // TODO: The HTML from this should come from a template.
+    for content in content_list.items {
+        content_hrefs.push_str(&format!(
             "<a href={}>{}</a> <br />",
             // TODO Change this to strip based on build_directory filepath
-            article.strip_prefix("./build/").expect("big bad"),
-            article.strip_prefix("./build/").expect("big bad")
+            content.strip_prefix("./build/").expect("big bad"),
+            content.strip_prefix("./build/").expect("big bad")
         ));
     }
 
-    let mut z = String::from(article_listing_page_name);
+    let mut z = String::from(content_listing_page_name);
     z.push_str(".html");
     let mut x = templates_directory.clone().to_path_buf();
 
@@ -259,14 +106,14 @@ fn build_listing_page(
 
     let list_template = std::fs::read_to_string(&x).expect("listing templates missing");
 
-    let list_page = list_template.replace("{article_list}", &article_hrefs);
+    let list_page = list_template.replace("{content_list}", &content_hrefs);
 
     let mut y = build_directory.clone().to_path_buf();
 
     y.push(std::path::Path::new(&z));
-    let mut new_article_list = File::create(y).expect("unable to create new listing page");
+    let mut new_content_list = File::create(y).expect("unable to create new listing page");
 
-    new_article_list
+    new_content_list
         .write_all(list_page.as_bytes())
         .expect("could not create new listing file");
 
@@ -294,16 +141,6 @@ fn build_stylesheets(templates_directory: &Path, build_directory: &Path) {
             }
             Err(_e) => {}
         }
-    }
-}
-
-fn is_markdown(path: &Path) -> bool {
-    match path.extension() {
-        None => false,
-        Some(extension) => match extension.to_str() {
-            Some("md") => true,
-            _ => false,
-        },
     }
 }
 
