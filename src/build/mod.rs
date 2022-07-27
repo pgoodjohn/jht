@@ -3,7 +3,7 @@ use clap::Parser;
 use pulldown_cmark::{html, Options, Parser as MarkdownParser};
 use std::fs::File;
 use std::io::prelude::*;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser)]
 pub struct BuildCommand {
@@ -112,50 +112,38 @@ fn build_content_pages(
 
     let mut all_articles = Vec::new();
 
+    // TODO: Some validation here would be nice, build only .md files
+    // TODO: Clean this up
+    // TODO: Add frontmatter support
     for entry in all_content.into_iter() {
-        let unwrapped = entry.unwrap();
+        let content_file = entry.unwrap();
 
-        let file_contents = std::fs::read_to_string(unwrapped.path()).expect("unable to read file");
+        let file_contents =
+            std::fs::read_to_string(content_file.path()).expect("unable to read file");
 
         let article_template =
             std::fs::read_to_string(content_page_template).expect("article template missing");
 
-        // TODO Convert markdown of file_contents to rich HTML
-
-        // Set up options and parser. Strikethroughs are not part of the CommonMark standard
-        // and we therefore must enable it explicitly.
         let mut options = Options::empty();
         options.insert(Options::ENABLE_STRIKETHROUGH);
         let parser = MarkdownParser::new_ext(&file_contents, options);
 
-        // Write to String buffer.
         let mut html_output = String::new();
         html::push_html(&mut html_output, parser);
 
         let article_page = article_template.replace("{article}", &html_output);
 
-        let new_file_name = String::from(format!(
-            "{}/{}.html",
-            articles_build_directory
-                .as_os_str()
-                .to_str()
-                .expect("Could not convert articles build directory in new file path"),
-            unwrapped
-                .path()
-                .file_stem()
-                .expect("big fail")
-                .to_str()
-                .expect("bigger fail")
-        ));
+        let new_file_name =
+            BuiltArticleFilePath::new(articles_build_directory, &content_file.path());
 
-        let mut new_file = File::create(std::path::Path::new(&new_file_name))
-            .expect("failed to create a file to store the article");
+        let mut new_file =
+            File::create(new_file_name.path).expect("failed to create a file to store the article");
 
         new_file
             .write_all(article_page.as_bytes())
             .expect("unable to write to article page");
 
-        all_articles.push(new_file_name)
+        all_articles.push(new_file_name.file_name);
     }
 
     log::info!("Built content pages");
@@ -167,6 +155,37 @@ fn build_content_pages(
     Ok(ContentList {
         items: all_articles,
     })
+}
+
+struct BuiltArticleFilePath {
+    path: PathBuf,
+    file_name: String,
+}
+
+impl BuiltArticleFilePath {
+    pub fn new(build_directory: &Path, content_file_path: &Path) -> Self {
+        let mut path = std::path::PathBuf::new();
+
+        let formatted_path = String::from(format!(
+            "{}/{}.html",
+            build_directory
+                .as_os_str()
+                .to_str()
+                .expect("Could not convert articles build directory in new file path"),
+            content_file_path
+                .file_stem()
+                .expect("Unable to get file stem from article file path")
+                .to_str()
+                .expect("Unable to convert file stem from article file path to string"),
+        ));
+
+        path.push(std::path::Path::new(&formatted_path));
+
+        Self {
+            path: path,
+            file_name: formatted_path,
+        }
+    }
 }
 
 fn build_listing_page(
@@ -182,6 +201,7 @@ fn build_listing_page(
     for article in content_list.items {
         article_hrefs.push_str(&format!(
             "<a href={}>{}</a> <br />",
+            // TODO Change this to strip based on build_directory filepath
             article.strip_prefix("./build/").expect("big bad"),
             article.strip_prefix("./build/").expect("big bad")
         ));
