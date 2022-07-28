@@ -10,6 +10,7 @@ mod config;
 mod configuration;
 mod init;
 mod logger;
+mod serve;
 
 /// JHT is a simple and straight forward static site generator
 /// Bring your own HTML and fill it with some markdown content
@@ -34,6 +35,7 @@ enum Commands {
     Build(build::BuildCommand),
     /// Manage your configuration
     Config(config::ConfigCommand),
+    Serve,
 }
 
 fn main() {
@@ -54,6 +56,10 @@ fn main() {
         }
         Some(Commands::Config(command)) => {
             config::command(&command);
+        }
+        Some(Commands::Serve) => {
+            let config = configuration::Config::load(configuration_file_path.to_path_buf());
+            serve::command(config);
         }
         None => {
             failure_message(); // Note that this will be handled by clap
