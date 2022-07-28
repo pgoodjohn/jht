@@ -3,7 +3,6 @@ use clap::{Parser, Subcommand};
 /// Next steps:
 /// - Init Script
 ///     - Create basic empty HTMLs (index.html, blog.html, content.html)
-/// - Styles support
 /// ----
 mod build;
 mod config;
@@ -35,7 +34,8 @@ enum Commands {
     Build(build::BuildCommand),
     /// Manage your configuration
     Config(config::ConfigCommand),
-    Serve,
+    /// Serve your website from the build directory
+    Serve(serve::ServeCommand),
 }
 
 fn main() {
@@ -57,9 +57,9 @@ fn main() {
         Some(Commands::Config(command)) => {
             config::command(&command);
         }
-        Some(Commands::Serve) => {
+        Some(Commands::Serve(command)) => {
             let config = configuration::Config::load(configuration_file_path.to_path_buf());
-            serve::command(config);
+            serve::command(&command, &config);
         }
         None => {
             failure_message(); // Note that this will be handled by clap

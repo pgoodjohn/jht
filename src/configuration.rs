@@ -7,6 +7,7 @@ pub struct Config {
     pub content_template: String,
     pub content_dir: String,
     pub build_config: BuildConfig,
+    pub development_config: DevelopmentConfig,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -14,6 +15,11 @@ pub struct BuildConfig {
     pub build_directory: String,
     pub content_directory: String,
     pub content_listing_page: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DevelopmentConfig {
+    pub port: u16,
 }
 
 impl Config {
@@ -75,6 +81,7 @@ impl Config {
                 content_directory: String::from("./build/blog"),
                 content_listing_page: String::from("blog"),
             },
+            development_config: DevelopmentConfig { port: 9999 },
             templates_directory: String::from("./templates"),
             content_template: String::from("./templates/content.html"),
             content_dir: String::from("./content"),
