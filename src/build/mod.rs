@@ -1,4 +1,5 @@
 use super::configuration;
+use super::utils;
 use clap::Parser;
 use std::fs::File;
 use std::io::prelude::*;
@@ -126,7 +127,13 @@ fn build_stylesheets(templates_directory: &Path, build_directory: &Path) {
     let all_templates = std::fs::read_dir(templates_directory)
         .expect("Failed reading templates in templates directory");
 
-    let stylesheets = all_templates.filter(|x| is_stylesheet(x));
+    let stylesheets = all_templates.filter(|x| {
+        if let Ok(template_path) = x {
+            utils::is_stylesheet(&template_path.path())
+        } else {
+            false
+        }
+    });
 
     for stylesheet in stylesheets {
         match stylesheet {
@@ -141,18 +148,5 @@ fn build_stylesheets(templates_directory: &Path, build_directory: &Path) {
             }
             Err(_e) => {}
         }
-    }
-}
-
-fn is_stylesheet(entry: &Result<std::fs::DirEntry, std::io::Error>) -> bool {
-    match entry {
-        Ok(entry) => match entry.path().extension() {
-            None => false,
-            Some(extension) => match extension.to_str() {
-                Some("css") => true,
-                _ => false,
-            },
-        },
-        Err(_e) => false,
     }
 }

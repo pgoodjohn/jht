@@ -1,3 +1,4 @@
+.PHONY: build
 build:
 	cargo run -- -d -f ./.test.toml build
 

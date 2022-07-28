@@ -3,6 +3,8 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
 
+use crate::utils;
+
 pub struct ContentList {
     pub items: Vec<String>,
 }
@@ -45,12 +47,13 @@ fn build_content_files(
     let content_template = load_content_template(content_page_template);
 
     // TODO: Add frontmatter support
+    // See maybe: https://github.com/r7kamura/fronma
     for entry in content_directory_contents.into_iter() {
         let content_file = entry.unwrap();
 
         log::debug!("Building file {:?}", &content_file.path());
 
-        if is_markdown(&content_file.path()) {
+        if utils::is_markdown(&content_file.path()) {
             log::debug!("Markdown file detected, converting to html");
             let built_content_file = create_content_file_from_markdown_and_html_template(
                 &content_file.path(),
@@ -173,15 +176,5 @@ impl BuiltContentFile {
             path: path,
             file_name: formatted_path,
         }
-    }
-}
-
-fn is_markdown(path: &Path) -> bool {
-    match path.extension() {
-        None => false,
-        Some(extension) => match extension.to_str() {
-            Some("md") => true,
-            _ => false,
-        },
     }
 }

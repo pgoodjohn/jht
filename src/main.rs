@@ -10,6 +10,7 @@ mod configuration;
 mod init;
 mod logger;
 mod serve;
+mod utils;
 
 /// JHT is a simple and straight forward static site generator
 /// Bring your own HTML and fill it with some markdown content
