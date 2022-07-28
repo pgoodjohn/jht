@@ -42,9 +42,7 @@ fn build_content_files(
 
     let mut content_pages = Vec::new();
 
-    // TODO: validate that the content template has {content} in it
-    let content_template =
-        std::fs::read_to_string(content_page_template).expect("article template missing");
+    let content_template = load_content_template(content_page_template);
 
     // TODO: Add frontmatter support
     for entry in content_directory_contents.into_iter() {
@@ -72,6 +70,26 @@ fn build_content_files(
 
     ContentList {
         items: content_pages,
+    }
+}
+
+fn load_content_template(content_page_template_path: &Path) -> String {
+    match std::fs::read_to_string(content_page_template_path) {
+        Ok(t) => {
+            // TODO: Validate template
+            validate_content_template(&t).expect("Invalid content template specified");
+            // return template string
+            t
+        }
+        Err(_e) => panic!("Could not load content page template"),
+    }
+}
+
+fn validate_content_template(template: &String) -> Result<(), ()> {
+    if template.contains("{content}") {
+        Ok(())
+    } else {
+        Err(())
     }
 }
 
