@@ -53,7 +53,7 @@ fn build_content_files(
 
         log::debug!("Building file {:?}", &content_file.path());
 
-        if utils::is_markdown(&content_file.path()) {
+        if utils::is_plaintext_file(&content_file.path()) {
             log::debug!("Markdown file detected, converting to html");
             let built_content_file = create_content_file_from_markdown_and_html_template(
                 &content_file.path(),
