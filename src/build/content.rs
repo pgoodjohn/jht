@@ -1,4 +1,6 @@
+use lazy_static::lazy_static;
 use pulldown_cmark::{html, Options, Parser as MarkdownParser};
+use regex::Regex;
 use std::fs::File;
 use std::io::prelude::*;
 use std::path::{Path, PathBuf};
@@ -46,8 +48,6 @@ fn build_content_files(
 
     let content_template = load_content_template(content_page_template);
 
-    // TODO: Add frontmatter support
-    // See maybe: https://github.com/r7kamura/fronma
     for entry in content_directory_contents.into_iter() {
         let content_file = entry.unwrap();
 
@@ -55,6 +55,9 @@ fn build_content_files(
 
         if utils::is_markdown(&content_file.path()) {
             log::debug!("Markdown file detected, converting to html");
+
+            let frontmatter = parse_frontmatter(&content_file.path());
+
             let built_content_file = create_content_file_from_markdown_and_html_template(
                 &content_file.path(),
                 content_template.clone(),
@@ -111,6 +114,70 @@ fn create_content_build_folder_if_it_does_not_exist(content_folder_path: &Path) 
         }
     }
 }
+
+fn parse_frontmatter(markdown_file: &Path) -> Option<std::collections::HashMap<String, String>> {
+    // ---(?<frontmatter>(.|\n)*)---
+    let content_file_content = std::fs::read_to_string(markdown_file).expect("unable to read file");
+    lazy_static! {
+        static ref FRONTMATTER_REGEX: Regex =
+            Regex::new("^---\n(?P<frontmatter>(.|\n)*)\n---").unwrap();
+    }
+
+    let locs = FRONTMATTER_REGEX.captures(&content_file_content);
+
+    match locs {
+        None => return None,
+        Some(captures) => {
+            let frontmatter_text = captures
+                .name("frontmatter")
+                .expect("could not get frontmatter from text")
+                .as_str();
+
+            log::debug!("Found frontmatter {:?}", &frontmatter_text);
+
+            return parse_key_value_pairs(&frontmatter_text);
+        }
+    }
+}
+
+fn parse_key_value_pairs(frontmatter: &str) -> Option<std::collections::HashMap<String, String>> {
+    lazy_static! {
+        static ref KEY_VALUE_REGEX: Regex = Regex::new("^(?P<key>.*):\\s(?P<value>.*)$").unwrap();
+    }
+
+    let mut key_values = std::collections::HashMap::<String, String>::new();
+
+    for line in frontmatter.lines() {
+        let locs = KEY_VALUE_REGEX.captures(line);
+
+        match locs {
+            None => {
+                return None;
+            }
+            Some(captures) => {
+                let key = captures
+                    .name("key")
+                    .expect("could not get key from text")
+                    .as_str();
+
+                let value = captures
+                    .name("value")
+                    .expect("could not get value from text")
+                    .as_str();
+
+                log::debug!("Parsed key: value pair {:?} {:?}", &key, &value);
+
+                key_values.insert(String::from(key), String::from(value));
+            }
+        }
+    }
+
+    log::debug!("Parsed key value struct: {:?}", key_values);
+
+    Some(key_values)
+}
+
+// fn find_frontmatter(content: &String) -> String {}
 
 fn create_content_file_from_markdown_and_html_template(
     markdown_file: &Path,
