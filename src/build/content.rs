@@ -56,15 +56,10 @@ fn build_content_files(
         if utils::is_markdown(&content_file.path()) {
             log::debug!("Markdown file detected, converting to html");
 
-            let frontmatter = parse_frontmatter(&content_file.path());
+            let file = ContentFile::new(&content_file.path());
+            let built_file = file.build(content_template.clone(), content_build_directory);
 
-            let built_content_file = create_content_file_from_markdown_and_html_template(
-                &content_file.path(),
-                content_template.clone(),
-                content_build_directory,
-            );
-
-            content_pages.push(built_content_file.file_name);
+            content_pages.push(built_file.file_name);
         }
     }
 
@@ -76,6 +71,44 @@ fn build_content_files(
 
     ContentList {
         items: content_pages,
+    }
+}
+
+struct ContentFile {
+    _path: PathBuf,
+    file_name: String,
+    raw_contents: String,
+    _frontmatter: std::collections::HashMap<String, String>,
+}
+
+impl ContentFile {
+    pub fn new(path: &Path) -> Self {
+        let file_contents = std::fs::read_to_string(path).expect("Unable to read Content file");
+
+        let file_name = path.file_stem().expect("Unable to retrieve file stem from Content file").to_str().expect("Could not convert Content file stem to string");
+
+        // TODO: Proper frontmatter parsing
+        // find front matter in raw contents
+        // remove it from raw_contents
+        // parse into formatter hashmap
+        let _frontmatter = parse_frontmatter(&file_contents);
+
+        ContentFile {
+            _path: path.to_path_buf(),
+            file_name: String::from(file_name),
+            raw_contents: file_contents,
+            _frontmatter: std::collections::HashMap::<String, String>::new(),
+        } 
+    }
+
+    pub fn build(self: &Self, template: String, build_directory: &Path) -> BuiltContentFile {
+        let built_content_file = BuiltContentFile::from_file_name(build_directory, &self.file_name);
+
+        let prepared_template = template.replace("{content}", &convert_markdown_to_html(&self.raw_contents));
+        
+        write_content_to_file(&built_content_file, &prepared_template);
+
+        built_content_file
     }
 }
 
@@ -115,9 +148,8 @@ fn create_content_build_folder_if_it_does_not_exist(content_folder_path: &Path) 
     }
 }
 
-fn parse_frontmatter(markdown_file: &Path) -> Option<std::collections::HashMap<String, String>> {
+fn parse_frontmatter(content_file_content: &String) -> Option<std::collections::HashMap<String, String>> {
     // ---(?<frontmatter>(.|\n)*)---
-    let content_file_content = std::fs::read_to_string(markdown_file).expect("unable to read file");
     lazy_static! {
         static ref FRONTMATTER_REGEX: Regex =
             Regex::new("^---\n(?P<frontmatter>(.|\n)*)\n---").unwrap();
@@ -179,26 +211,10 @@ fn parse_key_value_pairs(frontmatter: &str) -> Option<std::collections::HashMap<
 
 // fn find_frontmatter(content: &String) -> String {}
 
-fn create_content_file_from_markdown_and_html_template(
-    markdown_file: &Path,
-    content_page_template: String,
-    content_build_directory: &Path,
-) -> BuiltContentFile {
-    let content_file_content = std::fs::read_to_string(markdown_file).expect("unable to read file");
-
-    let built_content_file = BuiltContentFile::new(content_build_directory, &markdown_file);
-
-    let prepared_template =
-        content_page_template.replace("{content}", &convert_markdown_to_html(content_file_content));
-    write_content_to_file(&built_content_file, &prepared_template);
-
-    built_content_file
-}
-
-fn convert_markdown_to_html(markdown_content: String) -> String {
+fn convert_markdown_to_html(markdown_content: &String) -> String {
     let mut options = Options::empty();
     options.insert(Options::ENABLE_STRIKETHROUGH);
-    let parser = MarkdownParser::new_ext(&markdown_content, options);
+    let parser = MarkdownParser::new_ext(markdown_content, options);
 
     let mut html_output = String::new();
     html::push_html(&mut html_output, parser);
@@ -217,11 +233,11 @@ fn write_content_to_file(file_path: &BuiltContentFile, contents: &String) {
 
 struct BuiltContentFile {
     path: PathBuf,
-    file_name: String,
+    file_name: String
 }
 
 impl BuiltContentFile {
-    pub fn new(build_directory: &Path, content_file_path: &Path) -> Self {
+    pub fn from_file_name(build_directory: &Path, file_name: &String) -> Self {
         let mut path = std::path::PathBuf::new();
 
         let formatted_path = String::from(format!(
@@ -230,18 +246,15 @@ impl BuiltContentFile {
                 .as_os_str()
                 .to_str()
                 .expect("Could not convert articles build directory in new file path"),
-            content_file_path
-                .file_stem()
-                .expect("Unable to get file stem from article file path")
-                .to_str()
-                .expect("Unable to convert file stem from article file path to string"),
+            file_name 
         ));
 
         path.push(std::path::Path::new(&formatted_path));
 
         Self {
             path: path,
-            file_name: formatted_path,
+            file_name: formatted_path
         }
+
     }
 }
