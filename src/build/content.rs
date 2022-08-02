@@ -92,11 +92,12 @@ impl ContentFile {
         // remove it from raw_contents
         // parse into formatter hashmap
         let _frontmatter = parse_frontmatter(&file_contents);
+        let cleaned_content = remove_frontmatter(file_contents);
 
         ContentFile {
             _path: path.to_path_buf(),
             file_name: String::from(file_name),
-            raw_contents: file_contents,
+            raw_contents: cleaned_content,
             _frontmatter: std::collections::HashMap::<String, String>::new(),
         } 
     }
@@ -109,6 +110,21 @@ impl ContentFile {
         write_content_to_file(&built_content_file, &prepared_template);
 
         built_content_file
+    }
+}
+
+struct ContentFileFrontmatterAndRawContent {
+    raw_content: String,
+    frontmatter: Option<std::collections::HashMap<String, String>>
+}
+
+impl ContentFileFrontmatterAndRawContent {
+    pub fn from_file_contents(file_contents: String) -> Self {
+
+        ContentFileFrontmatterAndRawContent {
+            raw_content: file_contents,
+            frontmatter: None
+        }
     }
 }
 
@@ -148,17 +164,31 @@ fn create_content_build_folder_if_it_does_not_exist(content_folder_path: &Path) 
     }
 }
 
+fn remove_frontmatter(file_content: String) -> String {
+    lazy_static! {
+        static ref FRONTMATTER_REGEX: Regex =
+            Regex::new(r#"^---\n(?P<frontmatter>(.*:\s.*\n)*)---"#).unwrap();
+    }
+
+    let fixed_string = FRONTMATTER_REGEX.replace(&file_content, "").to_string();
+
+    fixed_string
+}
+
 fn parse_frontmatter(content_file_content: &String) -> Option<std::collections::HashMap<String, String>> {
     // ---(?<frontmatter>(.|\n)*)---
     lazy_static! {
         static ref FRONTMATTER_REGEX: Regex =
-            Regex::new("^---\n(?P<frontmatter>(.|\n)*)\n---").unwrap();
+             Regex::new(r#"^---\n(?P<frontmatter>(.*:\s.*\n)*)---"#).unwrap();
     }
 
     let locs = FRONTMATTER_REGEX.captures(&content_file_content);
 
     match locs {
-        None => return None,
+        None =>  {
+            log::debug!("No frontmatter detected");
+            return None;
+        },
         Some(captures) => {
             let frontmatter_text = captures
                 .name("frontmatter")
@@ -170,6 +200,87 @@ fn parse_frontmatter(content_file_content: &String) -> Option<std::collections::
             return parse_key_value_pairs(&frontmatter_text);
         }
     }
+}
+
+#[cfg(test)]
+mod test_frontmatter {
+    use super::parse_frontmatter;
+
+    #[test]
+    fn it_parses_a_single_frontmatter_at_the_top_of_the_file() {
+        let input = r#"---
+marco: polo
+leonardo: da vinci
+---
+"#;
+
+        let parsed_frontmatter = parse_frontmatter(&String::from(input));
+
+        match parsed_frontmatter {
+            None => panic!("Parsing frontmatter returned nothing."),
+            Some(frontmatter) => {
+                assert_eq!(true, frontmatter.contains_key("marco"));
+            }
+        }
+
+    }
+
+    #[test]
+    fn it_parses_a_single_frontmatter_at_the_top_of_the_file_if_multiple_triple_dashes_are_in_the_content() {
+    let input = r#"---
+marco: polo
+leonardo: da vinci
+---
+
+Lorem ipsum dolorem sic amet and other things as such.
+
+---
+
+
+Even more content down here
+
+---
+"#;
+
+        let parsed_frontmatter = parse_frontmatter(&String::from(input));
+
+        match parsed_frontmatter {
+            None => panic!("Parsing frontmatter returned nothing."),
+            Some(frontmatter) => {
+                assert_eq!(true, frontmatter.contains_key("marco"));
+                assert_eq!(2, frontmatter.len());
+            }
+        }
+    }
+    
+    #[test]
+    fn it_only_parses_frontmatter_if_at_the_beginning_of_the_file() {
+let input = r#"There is some more content in this file about stuff and maybe an example:
+
+---
+marco: polo
+leonardo: da vinci
+---
+
+Lorem ipsum dolorem sic amet and other things as such.
+
+---
+
+
+Even more content down here
+
+---
+"#;
+
+        let parsed_frontmatter = parse_frontmatter(&String::from(input));
+
+        match parsed_frontmatter {
+            Some (_f) => panic!("Parsing frontmatter returned nothing."),
+            None => {},
+        }
+
+    }
+
 }
 
 fn parse_key_value_pairs(frontmatter: &str) -> Option<std::collections::HashMap<String, String>> {
