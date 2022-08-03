@@ -78,7 +78,7 @@ struct ContentFile {
     _path: PathBuf,
     file_name: String,
     raw_contents: String,
-    _frontmatter: std::collections::HashMap<String, String>,
+    _frontmatter: Option<std::collections::HashMap<String, String>>,
 }
 
 impl ContentFile {
@@ -87,18 +87,13 @@ impl ContentFile {
 
         let file_name = path.file_stem().expect("Unable to retrieve file stem from Content file").to_str().expect("Could not convert Content file stem to string");
 
-        // TODO: Proper frontmatter parsing
-        // find front matter in raw contents
-        // remove it from raw_contents
-        // parse into formatter hashmap
-        let _frontmatter = parse_frontmatter(&file_contents);
-        let cleaned_content = remove_frontmatter(file_contents);
+        let parsed_content = ContentFileFrontmatterAndRawContent::from_file_contents(file_contents);
 
         ContentFile {
             _path: path.to_path_buf(),
             file_name: String::from(file_name),
-            raw_contents: cleaned_content,
-            _frontmatter: std::collections::HashMap::<String, String>::new(),
+            raw_contents: parsed_content.raw_content,
+            _frontmatter: parsed_content.frontmatter
         } 
     }
 
@@ -121,9 +116,12 @@ struct ContentFileFrontmatterAndRawContent {
 impl ContentFileFrontmatterAndRawContent {
     pub fn from_file_contents(file_contents: String) -> Self {
 
+        let frontmatter = parse_frontmatter(&file_contents);
+        let content_without_frontmatter = remove_frontmatter(file_contents);
+
         ContentFileFrontmatterAndRawContent {
-            raw_content: file_contents,
-            frontmatter: None
+            raw_content: content_without_frontmatter,
+            frontmatter
         }
     }
 }
@@ -363,7 +361,7 @@ impl BuiltContentFile {
         path.push(std::path::Path::new(&formatted_path));
 
         Self {
-            path: path,
+            path,
             file_name: formatted_path
         }
 
