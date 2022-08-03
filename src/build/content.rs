@@ -100,8 +100,25 @@ impl ContentFile {
     pub fn build(self: &Self, template: String, build_directory: &Path) -> BuiltContentFile {
         let built_content_file = BuiltContentFile::from_file_name(build_directory, &self.file_name);
 
-        let prepared_template = template.replace("{content}", &convert_markdown_to_html(&self.raw_contents));
-        
+        let mut prepared_template = template.replace("{content}", &convert_markdown_to_html(&self.raw_contents));
+
+        // Find and replace any {key} with value from frontmatter if some frontmatter was in the
+        // file.
+        match &self._frontmatter {
+            Some(frontmatter) => {
+                for (key, value) in frontmatter.iter() {
+                    log::debug!("Found frontmatter {:?}: {:?}", key, value );
+                    
+                    let formatted_key = format!(r#"{{{}}}"#, key);
+
+                    log::debug!("Replacing key {:?} in template", formatted_key);
+
+                    prepared_template = prepared_template.replace(formatted_key.as_str(), value);
+                }
+            },
+            None => {},
+        }
+       
         write_content_to_file(&built_content_file, &prepared_template);
 
         built_content_file
