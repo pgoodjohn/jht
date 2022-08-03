@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use plogger;
 /// ---
 /// Next steps:
 /// - Init Script
@@ -8,7 +9,6 @@ mod build;
 mod config;
 mod configuration;
 mod init;
-mod logger;
 mod serve;
 mod utils;
 
@@ -42,7 +42,7 @@ enum Commands {
 fn main() {
     let cli = Cli::parse();
 
-    logger::init(cli.debug);
+    plogger::init(cli.debug);
 
     let configuration_file_path = cli.path();
 

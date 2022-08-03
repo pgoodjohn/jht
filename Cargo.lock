@@ -455,11 +455,10 @@ checksum = "112c678d4050afce233f4f2852bb2eb519230b3cf12f33585275537d7e41578d"
 name = "just-html"
 version = "0.1.0"
 dependencies = [
- "chrono",
  "clap",
- "env_logger",
  "lazy_static",
  "log",
+ "plogger",
  "pulldown-cmark",
  "regex",
  "serde",
@@ -664,6 +663,17 @@ name = "pin-utils"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8b870d8c151b6f2fb93e84a13146138f05d02ed11c7e7c54f8826aaaf7c9f184"
+
+[[package]]
+name = "plogger"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8db6f3534fdb59aeb9f4f408bd8089fc7780f8fb83d7c61bd9b9cc2fc4c223dd"
+dependencies = [
+ "chrono",
+ "env_logger",
+ "log",
+]
 
 [[package]]
 name = "ppv-lite86"

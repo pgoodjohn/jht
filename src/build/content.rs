@@ -85,7 +85,11 @@ impl ContentFile {
     pub fn new(path: &Path) -> Self {
         let file_contents = std::fs::read_to_string(path).expect("Unable to read Content file");
 
-        let file_name = path.file_stem().expect("Unable to retrieve file stem from Content file").to_str().expect("Could not convert Content file stem to string");
+        let file_name = path
+            .file_stem()
+            .expect("Unable to retrieve file stem from Content file")
+            .to_str()
+            .expect("Could not convert Content file stem to string");
 
         let parsed_content = ContentFileFrontmatterAndRawContent::from_file_contents(file_contents);
 
@@ -93,32 +97,33 @@ impl ContentFile {
             _path: path.to_path_buf(),
             file_name: String::from(file_name),
             raw_contents: parsed_content.raw_content,
-            _frontmatter: parsed_content.frontmatter
-        } 
+            _frontmatter: parsed_content.frontmatter,
+        }
     }
 
     pub fn build(self: &Self, template: String, build_directory: &Path) -> BuiltContentFile {
         let built_content_file = BuiltContentFile::from_file_name(build_directory, &self.file_name);
 
-        let mut prepared_template = template.replace("{content}", &convert_markdown_to_html(&self.raw_contents));
+        let mut prepared_template =
+            template.replace("{content}", &convert_markdown_to_html(&self.raw_contents));
 
         // Find and replace any {key} with value from frontmatter if some frontmatter was in the
         // file.
         match &self._frontmatter {
             Some(frontmatter) => {
                 for (key, value) in frontmatter.iter() {
-                    log::debug!("Found frontmatter {:?}: {:?}", key, value );
-                    
+                    log::debug!("Found frontmatter {:?}: {:?}", key, value);
+
                     let formatted_key = format!(r#"{{{}}}"#, key);
 
                     log::debug!("Replacing key {:?} in template", formatted_key);
 
                     prepared_template = prepared_template.replace(formatted_key.as_str(), value);
                 }
-            },
-            None => {},
+            }
+            None => {}
         }
-       
+
         write_content_to_file(&built_content_file, &prepared_template);
 
         built_content_file
@@ -127,18 +132,17 @@ impl ContentFile {
 
 struct ContentFileFrontmatterAndRawContent {
     raw_content: String,
-    frontmatter: Option<std::collections::HashMap<String, String>>
+    frontmatter: Option<std::collections::HashMap<String, String>>,
 }
 
 impl ContentFileFrontmatterAndRawContent {
     pub fn from_file_contents(file_contents: String) -> Self {
-
         let frontmatter = parse_frontmatter(&file_contents);
         let content_without_frontmatter = remove_frontmatter(file_contents);
 
         ContentFileFrontmatterAndRawContent {
             raw_content: content_without_frontmatter,
-            frontmatter
+            frontmatter,
         }
     }
 }
@@ -190,20 +194,22 @@ fn remove_frontmatter(file_content: String) -> String {
     fixed_string
 }
 
-fn parse_frontmatter(content_file_content: &String) -> Option<std::collections::HashMap<String, String>> {
+fn parse_frontmatter(
+    content_file_content: &String,
+) -> Option<std::collections::HashMap<String, String>> {
     // ---(?<frontmatter>(.|\n)*)---
     lazy_static! {
         static ref FRONTMATTER_REGEX: Regex =
-             Regex::new(r#"^---\n(?P<frontmatter>(.*:\s.*\n)*)---"#).unwrap();
+            Regex::new(r#"^---\n(?P<frontmatter>(.*:\s.*\n)*)---"#).unwrap();
     }
 
     let locs = FRONTMATTER_REGEX.captures(&content_file_content);
 
     match locs {
-        None =>  {
+        None => {
             log::debug!("No frontmatter detected");
             return None;
-        },
+        }
         Some(captures) => {
             let frontmatter_text = captures
                 .name("frontmatter")
@@ -237,12 +243,12 @@ leonardo: da vinci
                 assert_eq!(true, frontmatter.contains_key("marco"));
             }
         }
-
     }
 
     #[test]
-    fn it_parses_a_single_frontmatter_at_the_top_of_the_file_if_multiple_triple_dashes_are_in_the_content() {
-    let input = r#"---
+    fn it_parses_a_single_frontmatter_at_the_top_of_the_file_if_multiple_triple_dashes_are_in_the_content(
+    ) {
+        let input = r#"---
 marco: polo
 leonardo: da vinci
 ---
@@ -267,10 +273,10 @@ Even more content down here
             }
         }
     }
-    
+
     #[test]
     fn it_only_parses_frontmatter_if_at_the_beginning_of_the_file() {
-let input = r#"There is some more content in this file about stuff and maybe an example:
+        let input = r#"There is some more content in this file about stuff and maybe an example:
 
 ---
 marco: polo
@@ -290,12 +296,10 @@ Even more content down here
         let parsed_frontmatter = parse_frontmatter(&String::from(input));
 
         match parsed_frontmatter {
-            Some (_f) => panic!("Parsing frontmatter returned nothing."),
-            None => {},
+            Some(_f) => panic!("Parsing frontmatter returned nothing."),
+            None => {}
         }
-
     }
-
 }
 
 fn parse_key_value_pairs(frontmatter: &str) -> Option<std::collections::HashMap<String, String>> {
@@ -359,7 +363,7 @@ fn write_content_to_file(file_path: &BuiltContentFile, contents: &String) {
 
 struct BuiltContentFile {
     path: PathBuf,
-    file_name: String
+    file_name: String,
 }
 
 impl BuiltContentFile {
@@ -372,15 +376,14 @@ impl BuiltContentFile {
                 .as_os_str()
                 .to_str()
                 .expect("Could not convert articles build directory in new file path"),
-            file_name 
+            file_name
         ));
 
         path.push(std::path::Path::new(&formatted_path));
 
         Self {
             path,
-            file_name: formatted_path
+            file_name: formatted_path,
         }
-
     }
 }

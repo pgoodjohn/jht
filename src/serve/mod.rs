@@ -15,18 +15,12 @@ pub async fn command(command: &ServeCommand, config: &Config) {
 
     let port = get_port(command, config);
 
-    warp::serve(build_directory)
-        .run(([0, 0, 0, 0], port))
-        .await;
+    warp::serve(build_directory).run(([0, 0, 0, 0], port)).await;
 }
 
-fn get_port(command:&ServeCommand,  config: &Config) -> u16 {
+fn get_port(command: &ServeCommand, config: &Config) -> u16 {
     match command.port {
-        Some(port) => {
-            port
-        },
-        None => {
-            config.development_config.port
-        }
+        Some(port) => port,
+        None => config.development_config.port,
     }
 }

@@ -9,7 +9,7 @@ pub fn is_stylesheet(path: &std::path::Path) -> bool {
 }
 
 pub fn is_plaintext_file(path: &std::path::Path) -> bool {
-match path.extension() {
+    match path.extension() {
         None => false,
         Some(extension) => match extension.to_str() {
             Some("md") => true,
